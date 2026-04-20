@@ -1,0 +1,93 @@
+# Two-service stack: FastAPI backend + Nginx-served React frontend.
+#
+# Naming convention (matches the standalone `docker run` commands so the
+# same image / container / network / volume names work whether you use
+# compose or run things by hand):
+#
+#   image:     current-affairs-backend:test  / current-affairs-frontend:test
+#   container: current-affairs-backend       / current-affairs-frontend
+#   network:   current-affairs-net
+#   volume:    current-affairs-data
+#
+# Usage:
+#   1. Copy `.env.example` to `.env` and fill in NEWSDATA_API_KEY + JWT_SECRET.
+#   2. `docker compose up --build -d`
+#   3. Open http://localhost:9090
+#
+# The frontend container reverse-proxies /api/* to the backend over the
+# compose-internal network, so the browser only ever talks to one origin -
+# no CORS dance, no extra config.
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: current-affairs-backend:test
+    container_name: current-affairs-backend
+    restart: unless-stopped
+    environment:
+      # Required - get a free key at https://newsdata.io/register
+      NEWSDATA_API_KEY: ${NEWSDATA_API_KEY:?Set NEWSDATA_API_KEY in .env}
+      # Required for production - generate via: python -c "import secrets; print(secrets.token_urlsafe(64))"
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
+      DEFAULT_COUNTRY: ${DEFAULT_COUNTRY:-in}
+      # SQLite file lives on the named volume so it survives `down`/`up` cycles.
+      DATABASE_URL: sqlite:////data/current_affairs.db
+      # The browser hits the frontend, which reverse-proxies under the same
+      # origin, so CORS only matters if you point the SPA at the backend
+      # directly. Keep it permissive by default and lock down for prod.
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:9090}
+      APP_NAME: ${APP_NAME:-Current Affairs API}
+      DEBUG: ${DEBUG:-false}
+    volumes:
+      - current-affairs-data:/data
+    # Exposed for direct access (Swagger at :8000/docs) - remove this block
+    # in prod if you only want the frontend container to be reachable.
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      # Alias `backend` is what nginx in the frontend container proxies to,
+      # so the same image works whether started by compose or by `docker run
+      # --network-alias backend ...`.
+      current-affairs-net:
+        aliases:
+          - backend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Same-origin call. Nginx forwards /api/* to the backend service.
+        VITE_API_BASE_URL: /api
+    image: current-affairs-frontend:test
+    container_name: current-affairs-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      # Host port 3000 -> container port 80 (nginx). Change the LEFT side
+      # if 3000 is already in use by another dev server on your machine.
+      - "3000:80"
+    networks:
+      - current-affairs-net
+
+networks:
+  current-affairs-net:
+    driver: bridge
+
+volumes:
+  # Persists the SQLite DB across container rebuilds. Wipe with:
+  #   docker compose down -v
+  current-affairs-data:
+    driver: local

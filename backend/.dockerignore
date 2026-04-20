@@ -1,0 +1,38 @@
+# Keep the build context small + reproducible. Anything listed here will
+# NOT be sent to the Docker daemon during `docker build ./backend`.
+
+# Local virtualenvs / Python caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local SQLite database (production data lives in the /data volume, not
+# inside the image).
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Local secrets - the API key / JWT secret come from compose env, never
+# baked into the image.
+.env
+.env.*
+!.env.example
+
+# Editor / OS noise
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Docs and tests aren't needed at runtime
+README.md
+docs/
+tests/

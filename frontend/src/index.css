@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: theme("fontFamily.sans");
+    @apply text-slate-800 antialiased;
+  }
+}
+
+@layer components {
+  /* App-wide background: soft layered gradient + faint blob accents.
+     Teal glow top-left, warm amber glow top-right, on an off-white wash. */
+  .app-shell {
+    background-color: #f5faf7;
+    background-image:
+      radial-gradient(900px circle at 8% -10%, rgba(21, 168, 116, 0.16), transparent 55%),
+      radial-gradient(800px circle at 96% -5%, rgba(239, 124, 10, 0.10), transparent 55%),
+      radial-gradient(600px circle at 50% 100%, rgba(21, 168, 116, 0.05), transparent 60%),
+      linear-gradient(180deg, #f9fdfb 0%, #f1f7f3 100%);
+    background-attachment: fixed;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700 hover:shadow active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply btn border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:shadow active:scale-[0.98];
+  }
+
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 text-white shadow-sm hover:bg-red-700 active:scale-[0.98];
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200 disabled:cursor-not-allowed disabled:bg-slate-100;
+  }
+
+  .label {
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  .card {
+    @apply overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg;
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700;
+  }
+
+  .chip-brand {
+    @apply chip bg-brand-100 text-brand-700;
+  }
+}
+
+/* Subtle, branded scrollbar for the carousel */
+@layer utilities {
+  .scrollbar-soft::-webkit-scrollbar {
+    height: 8px;
+  }
+  .scrollbar-soft::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-soft::-webkit-scrollbar-thumb {
+    background-color: rgba(21, 168, 116, 0.30);
+    border-radius: 9999px;
+  }
+  .scrollbar-soft::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(12, 138, 94, 0.55);
+  }
+}

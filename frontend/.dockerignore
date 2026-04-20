@@ -1,0 +1,28 @@
+# Files / folders excluded from the build context for `docker build ./frontend`.
+
+node_modules/
+dist/
+build/
+.vite/
+
+# Local env files - the production build uses build args (VITE_API_BASE_URL),
+# never .env.
+.env
+.env.*
+!.env.example
+
+# Test / cache
+coverage/
+.nyc_output/
+.eslintcache
+
+# Editor / OS noise
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Docs
+README.md
+docs/

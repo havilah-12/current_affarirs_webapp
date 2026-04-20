@@ -67,7 +67,7 @@ docker compose down -v    # ALSO drops the volume (factory reset)
 The SQLite database lives on the named volume `backend-data` (mounted at
 `/data` inside the backend container) so it survives `down` / `up` cycles.
 
-## Quick start — local Python + Node (for hacking)
+## Quick start — local Python + Node 
 
 ```powershell
 # Backend (http://localhost:8000)

@@ -1,13 +1,11 @@
 """Live news endpoints backed by NewsData.io.
 
-Two flavours of the same data are exposed:
+- `GET /news`           : detailed headline feed (titles, descriptions, content,
+                          source, image, etc.) — this is what the SPA uses.
+- `GET /news/formatted` : optional condensed "GK quick-read" view (YAKE
+                          bullets) for the same filters; same auth rules.
 
-- `GET /news`           : detailed view (full titles, descriptions, content).
-- `GET /news/formatted` : condensed "GK quick-read" view with extracted
-                          keyphrases and a first-sentence summary per article.
-
-Both endpoints accept the same filters, so the frontend just swaps the URL
-when the user toggles between the two views.
+Both accept the same query parameters.
 
 Endpoints are protected by `get_current_user` because the upstream API key is
 a paid resource we don't want exposed to anonymous callers.

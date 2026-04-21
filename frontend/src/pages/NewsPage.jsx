@@ -6,7 +6,7 @@ import { apiErrorMessage } from "../api/client.js";
 import { fetchNews } from "../api/news.js";
 import { saveArticle } from "../api/saved.js";
 import FiltersBar from "../components/FiltersBar.jsx";
-import FormattedArticleCard from "../components/FormattedArticleCard.jsx";
+import NewsArticleCard from "../components/NewsArticleCard.jsx";
 import { FullPageSpinner } from "../components/Spinner.jsx";
 import Toast from "../components/Toast.jsx";
 import { useToast } from "../hooks/useToast.js";
@@ -173,7 +173,7 @@ export default function NewsPage() {
       />
 
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold text-slate-900">Quick read</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Latest headlines</h2>
         <div className="flex items-center gap-3">
           {resultMeta && <span className="text-xs text-slate-500">{resultMeta}</span>}
           <button
@@ -223,7 +223,7 @@ export default function NewsPage() {
                     div stretches so every card in a row matches height */}
                 <div className="flex w-full px-2">
                   <div className="flex w-full">
-                    <FormattedArticleCard
+                    <NewsArticleCard
                       article={article}
                       onSave={() => handleSave(article)}
                       isSaving={isSaving}

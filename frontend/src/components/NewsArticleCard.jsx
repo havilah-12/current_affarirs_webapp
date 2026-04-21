@@ -2,22 +2,30 @@ import Spinner from "./Spinner.jsx";
 import { formatPublished } from "../utils/time.js";
 
 /**
- * Quick-read view: title + a bullet list produced by the backend's
- * formatter (`GET /news/formatted`).
+ * Headline card for the live feed (`GET /news`): hero image, title, and a
+ * short excerpt from description or content.
  *
  * Props:
- *   article    : FormattedArticle shape
+ *   article    : Article shape from the backend (detailed view)
  *   onSave()   : called when user saves
  *   isSaving   : show spinner on the button
  *   isSaved    : render disabled "Saved" state
  */
-export default function FormattedArticleCard({
-  article,
-  onSave,
-  isSaving,
-  isSaved,
-}) {
+function excerpt(article) {
+  const text = (article.description || article.content || "").trim();
+  if (!text) return null;
+  return text;
+}
+
+function formatCategoryLabel(category) {
+  if (!category || typeof category !== "string") return null;
+  return category[0].toUpperCase() + category.slice(1);
+}
+
+export default function NewsArticleCard({ article, onSave, isSaving, isSaved }) {
   const published = formatPublished(article.published_at);
+  const body = excerpt(article);
+  const categoryLabel = formatCategoryLabel(article.category);
 
   return (
     <article className="card flex h-full w-full flex-col">
@@ -28,19 +36,13 @@ export default function FormattedArticleCard({
           loading="lazy"
           className="aspect-video w-full bg-slate-100 object-cover"
           onError={(e) => {
-            // Some publishers' image hosts 403 us or stop serving the asset.
-            // Hide the broken image so the card still looks clean.
             e.currentTarget.style.display = "none";
           }}
         />
       )}
       <div className="flex flex-1 flex-col p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          {article.category && (
-            <span className="chip-brand">
-              {article.category[0].toUpperCase() + article.category.slice(1)}
-            </span>
-          )}
+          {categoryLabel && <span className="chip-brand">{categoryLabel}</span>}
           {article.source && <span className="chip">{article.source}</span>}
           {published && (
             <span className="text-slate-500" title={published.absolute}>
@@ -53,29 +55,13 @@ export default function FormattedArticleCard({
           {article.title}
         </h3>
 
-        {article.bullets?.length > 0 ? (
-          <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-slate-700">
-            {article.bullets.map((bullet, idx) => (
-              <li key={idx} className="line-clamp-2">
-                {bullet}
-              </li>
-            ))}
-          </ul>
-        ) : article.summary ? (
-          <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-slate-700">
-            {article.summary}
-          </p>
-        ) : null}
-
-        {article.keyphrases?.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {article.keyphrases.map((kp, idx) => (
-              <span key={idx} className="chip">
-                {kp}
-              </span>
-            ))}
-          </div>
+        {article.author && (
+          <p className="mt-1 text-xs text-slate-500">By {article.author}</p>
         )}
+
+        {body ? (
+          <p className="mt-3 line-clamp-5 text-sm leading-relaxed text-slate-700">{body}</p>
+        ) : null}
 
         <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4">
           {article.url ? (
@@ -112,4 +98,3 @@ export default function FormattedArticleCard({
     </article>
   );
 }
-

@@ -1,8 +1,8 @@
 # Current Affairs — Frontend
 
 React + Tailwind UI for the Current Affairs / GK study webapp. Talks to the
-FastAPI backend in `../backend` over HTTP and lets users log in, browse
-quick-read news cards, filter by category / country / Indian state /
+FastAPI backend in `../backend` over HTTP and lets users log in, browse the
+headline feed (`GET /news`), filter by category / country / Indian state /
 keyword, bookmark articles, star them, track a daily reading streak, and
 download saved items as `.txt` or `.pdf`.
 
@@ -49,7 +49,7 @@ frontend/
       Navbar.jsx
       ProtectedRoute.jsx
       FiltersBar.jsx
-      FormattedArticleCard.jsx  # quick-read card with image, bullets, save button
+      NewsArticleCard.jsx      # feed card: image, title, excerpt, save button
       SavedArticleCard.jsx   # saved item with star/delete/download controls
       StreakPanel.jsx        # daily-streak widget shown on the dashboard
       Spinner.jsx            # Spinner + FullPageSpinner
@@ -58,7 +58,7 @@ frontend/
     pages/
       LoginPage.jsx
       SignupPage.jsx
-      NewsPage.jsx           # home: quick-read carousel + filters
+      NewsPage.jsx           # home: headline carousel + filters
       SavedPage.jsx          # dashboard: saved articles + streak
 ```
 
@@ -111,7 +111,7 @@ this origin.
 |------------|----------|------------------------------------------------------------------------|
 | `/login`   | public   | Email + password login form.                                           |
 | `/signup`  | public   | Create account; redirects to `/` on success.                           |
-| `/`        | required | Quick-read news carousel. Category / country / state / search filters. |
+| `/`        | required | News carousel (`GET /news`). Category / country / state / search filters. |
 | `/saved`   | required | Dashboard. Daily streak + saved articles with downloads.               |
 
 `ProtectedRoute` wraps the private routes. While the auth context is
@@ -139,11 +139,14 @@ Pages call the thin modules in `src/api/*.js`; components stay presentational.
 
 ## The feed
 
-The News page calls `GET /news/formatted` and renders each result with
-`<FormattedArticleCard>` — a card with the source image, title,
-server-extracted bullets (YAKE-mined), and a Save button. Cards are laid
-out as a horizontal scroll-snap carousel (3 per page on wide screens,
-2 on tablet, 1 on mobile).
+The News page calls `GET /news` (detailed articles) and renders each row with
+`<NewsArticleCard>` — image, title, description/content excerpt, and Save.
+Cards are laid out as a horizontal scroll-snap carousel (3 per page on wide
+screens, 2 on tablet, 1 on mobile).
+
+The backend still exposes `GET /news/formatted` (YAKE bullet view) for API
+clients; the SPA does not use it. **Formatted vs detailed** on downloads is
+only on the Saved page (`style` query param), not on the live feed.
 
 Selecting an Indian state sends `qInTitle=<state>` to the backend so
 results are headlines *about* that state, not just any article that
@@ -187,7 +190,7 @@ before firing the download.
 ## Notes
 
 - All private routes are guarded by `ProtectedRoute`. The backend
-  additionally enforces auth on every `/news/*` and `/saved/*` endpoint,
+  additionally enforces auth on every `/news/*`, `/saved/*`, and `/activity/*` endpoint,
   so even a bypass of the client-side guard is safe.
 - JWTs live in `localStorage`. This is vulnerable to XSS; if you later
   introduce user-generated HTML, move the token to an `httpOnly` cookie

@@ -1,12 +1,13 @@
 # Current Affairs — Backend
 
 FastAPI backend for a current-affairs / GK study webapp. It pulls live
-headlines from [NewsAPI.org](https://newsapi.org), converts them into a
-condensed "GK quick-read" bullet view, lets signed-in users bookmark
-articles, and hands back those bookmarks as `.txt` or `.pdf` downloads.
+headlines from [NewsData.io](https://newsdata.io), serves a detailed feed on
+`GET /news` (what the SPA uses), optionally exposes a YAKE bullet view on
+`GET /news/formatted`, lets signed-in users bookmark articles, tracks a daily
+reading streak, and serves saved rows as `.txt` or `.pdf` downloads.
 
-The frontend (React + Tailwind) will be built in a separate phase and will
-talk to this API over HTTP.
+The React + Vite + Tailwind frontend lives in [`../frontend`](../frontend).
+For Docker and one-command startup, see the repo root [`readme.md`](../readme.md).
 
 ---
 
@@ -15,10 +16,11 @@ talk to this API over HTTP.
 - **FastAPI** (Python 3.10+) — web framework
 - **SQLAlchemy 2.x** + **SQLite** — ORM + storage
 - **Pydantic v2** + **pydantic-settings** — schemas + config
-- **python-jose** + **passlib[bcrypt]** — JWT auth + password hashing
-- **httpx** — async HTTP client for NewsAPI
+- **python-jose** + **bcrypt** — JWT auth + password hashing
+- **httpx** — async HTTP client for NewsData.io
 - **YAKE** — unsupervised keyphrase extraction for the "formatted" view
-- **reportlab** — PDF export
+- **trafilatura** — optional full-article fetch when saving (see `article_fetcher`)
+- **reportlab** + **pillow** — PDF export and embedded images
 
 ---
 
@@ -30,21 +32,25 @@ backend/
   .env.example
   app/
     __init__.py
-    config.py           # Settings (reads .env via pydantic-settings)
-    database.py         # engine, SessionLocal, Base, init_db()
-    models.py           # User, SavedArticle
-    schemas.py          # Pydantic request/response models
-    security.py         # bcrypt + JWT helpers
-    deps.py             # get_db, get_current_user
+    config.py             # Settings (reads .env; NEWSDATA_API_KEY + legacy NEWSAPI_KEY)
+    database.py           # engine, SessionLocal, Base, init_db()
+    models.py             # User, SavedArticle, ReadingActivity
+    schemas.py            # Pydantic request/response models
+    security.py           # bcrypt + JWT helpers
+    deps.py               # get_db, get_current_user
     services/
-      news_service.py   # NewsAPI client (top-headlines + everything)
-      formatter.py      # Article -> bullet list (YAKE keyphrases)
-      exporter.py       # Article(s) -> .txt / .pdf
+      news_service.py     # NewsData.io client (/latest, normalised Article model)
+      formatter.py        # Article -> bullet list (YAKE keyphrases)
+      article_fetcher.py  # Full-body fetch + scrub when saving
+      exporter.py         # Article(s) -> .txt / .pdf
+      pdf_fonts.py        # PDF typography helpers
+      pdf_images.py       # PDF image helpers
     routers/
-      auth.py           # /auth/signup, /auth/login, /auth/me
-      news.py           # /news, /news/formatted
-      saved.py          # /saved CRUD + /saved/{id}/download + /saved/export
-    main.py             # FastAPI app factory
+      auth.py             # /auth/signup, /auth/login, /auth/me
+      news.py             # /news, /news/formatted
+      saved.py            # /saved CRUD + download + export
+      activity.py         # /activity/ping, /activity/stats (streak)
+    main.py               # FastAPI app factory
 ```
 
 ---
@@ -79,18 +85,20 @@ cp .env.example .env
 
 Open `.env` and set at minimum:
 
-- `NEWSAPI_KEY` — get a free dev key at <https://newsapi.org/register>
-- `JWT_SECRET` — any long random string, e.g.:
+- **`NEWSDATA_API_KEY`** — free dev key from <https://newsdata.io/register>  
+  (`NEWSAPI_KEY` is still read as a **legacy alias** for the same value; prefer `NEWSDATA_API_KEY`.)
+- **`JWT_SECRET`** — long random string, e.g.:
 
   ```bash
   python -c "import secrets; print(secrets.token_urlsafe(64))"
   ```
 
-Optional:
+Optional (see `.env.example`):
 
-- `DEFAULT_COUNTRY` — ISO 3166-1 alpha-2 code used when no filter is given (default `in`).
-- `CORS_ORIGINS` — comma-separated list of allowed frontend origins.
-- `DATABASE_URL` — defaults to `sqlite:///./current_affairs.db`.
+- **`JWT_ALGORITHM`**, **`JWT_EXPIRE_MINUTES`**
+- **`DEFAULT_COUNTRY`** — ISO 3166-1 alpha-2 default when filters omit country (default `in`).
+- **`CORS_ORIGINS`** — comma-separated frontend origins.
+- **`DATABASE_URL`** — defaults to `sqlite:///./current_affairs.db`.
 
 ### 3. Run the server
 
@@ -103,15 +111,19 @@ uvicorn app.main:app --reload
 - ReDoc:           <http://localhost:8000/redoc>
 - Health probe:    <http://localhost:8000/health>
 
-On first start, the SQLite database is created automatically next to the
-`backend/` folder.
+On first start, `init_db()` creates the SQLite schema. The DB file path comes from `DATABASE_URL` (by default next to the working directory when you run uvicorn, typically `backend/`).
 
 ---
 
 ## API overview
 
-All `/news/*` and `/saved/*` endpoints require a JWT sent as
-`Authorization: Bearer <token>`.
+These groups require a JWT as **`Authorization: Bearer <token>`**:
+
+- `/news/*`
+- `/saved/*`
+- `/activity/*`
+
+Auth routes are public (signup/login) except **`GET /auth/me`**, which requires a valid JWT.
 
 ### Auth
 
@@ -119,53 +131,54 @@ All `/news/*` and `/saved/*` endpoints require a JWT sent as
 |--------|----------------|-------------------------------------|---------------------------------------|
 | POST   | `/auth/signup` | JSON `{email, password}`            | Creates the user, returns a JWT.      |
 | POST   | `/auth/login`  | Form `username` (email), `password` | OAuth2 password flow. Returns a JWT.  |
-| GET    | `/auth/me`     | —                                   | Returns the current user.             |
+| GET    | `/auth/me`     | —                                   | Returns the current user (JWT).     |
 
-### News (NewsAPI-backed)
+### News (NewsData.io-backed)
 
-| Method | Path               | Query                                                    | Notes                                    |
-|--------|--------------------|-----------------------------------------------------------|------------------------------------------|
-| GET    | `/news`            | `category`, `country`, `q`, `page`, `page_size`, `search` | Detailed feed.                           |
-| GET    | `/news/formatted`  | same                                                      | GK-bullet view of the same articles.     |
+| Method | Path               | Query params | Notes |
+|--------|--------------------|--------------|-------|
+| GET    | `/news`            | `category`, `country`, `q`, `q_in_title`, `page`, `page_size` | Detailed feed (cleaned passthrough). |
+| GET    | `/news/formatted`  | same                                                          | Same filters; each article passed through `formatter.format_articles` (optional; not used by the SPA). |
 
-Supported categories: `business`, `entertainment`, `general`, `health`,
-`science`, `sports`, `technology`.
+**Categories** (NewsData.io vocabulary): `business`, `crime`, `domestic`, `education`, `entertainment`, `environment`, `food`, `health`, `lifestyle`, `other`, `politics`, `science`, `sports`, `technology`, `top`, `tourism`, `world`.
 
-Set `search=true` together with `q=...` to hit NewsAPI's broader
-`/everything` endpoint (keyword search across all sources; category /
-country are ignored in this mode).
+**`q_in_title`** — optional; when set, the keyword must appear in the article **title**. The frontend uses this for Indian-state style filters so results are about that region, not random mentions in the body.
+
+Broad keyword search uses the same NewsData.io endpoint with a `q` filter; there is no separate `/everything`-style toggle like the old NewsAPI integration.
 
 ### Saved articles
 
 | Method | Path                      | Notes                                                                   |
 |--------|---------------------------|-------------------------------------------------------------------------|
-| POST   | `/saved`                  | Persist an article snapshot (full payload, not just the URL).           |
+| POST   | `/saved`                  | Persist an article snapshot (full payload, not just the URL).             |
 | GET    | `/saved`                  | List the caller's saved items (`starred_only`, `limit`, `offset`).      |
 | GET    | `/saved/{id}`             | Read one.                                                               |
 | PATCH  | `/saved/{id}`             | Toggle `starred`.                                                       |
 | DELETE | `/saved/{id}`             | Remove.                                                                 |
 | GET    | `/saved/{id}/download`    | `format=txt|pdf`, `style=detailed|formatted`. Single-article export.    |
-| GET    | `/saved/export`           | Bulk download of all saved (or just starred). Same query params.        |
+| GET    | `/saved/export`           | Bulk download; same query params + `starred_only`.                     |
+
+### Activity (reading streak)
+
+| Method | Path               | Notes |
+|--------|--------------------|--------|
+| POST   | `/activity/ping`   | Idempotently record "user opened news" for the current UTC day; returns streak hints. |
+| GET    | `/activity/stats`  | Streaks, month/total counts, 30-day heatmap for the dashboard. |
 
 ---
 
-## How the two "views" work
+## How the live feed vs formatted JSON vs exports relate
 
-The **detailed view** (`GET /news`) is essentially a cleaned NewsAPI
-passthrough: full title, description, content, source, image URL,
-published timestamp.
+The **detailed feed** (`GET /news`) returns normalised fields: title, description, content, source, image URL, published time, etc., after cleaning HTML/truncation artefacts from the upstream payload. **The React app uses this endpoint only.**
 
-The **formatted view** (`GET /news/formatted`) runs each article through
-`services/formatter.py`, which:
+The **formatted JSON feed** (`GET /news/formatted`) runs each article through `services/formatter.py`, which:
 
-1. Cleans whitespace and strips NewsAPI's `[+123 chars]` truncation marker.
-2. Picks the first sentence of the description as a one-line summary.
-3. Runs YAKE on `title + description` to pull the top 3–5 keyphrases.
-4. Renders everything into a `bullets: [str]` list, ready for the UI.
+1. Cleans whitespace and strips common truncation markers (including legacy `[+N chars]` patterns).
+2. Picks the first sentence of the description as a one-line summary where applicable.
+3. Runs YAKE on `title + description` for the top keyphrases.
+4. Emits a `bullets: [str]` list.
 
-The same `format_article()` function feeds the `style=formatted` branch of
-the PDF/TXT exporter, so the "quick-read" view and the downloadable study
-notes are always in sync.
+The same `format_article()` logic feeds the **`style=formatted`** branch in `exporter.py` for **saved-article downloads**, so exported “formatted” study notes match the bullet pipeline even though the home feed no longer renders that JSON.
 
 ---
 
@@ -177,33 +190,25 @@ GET /saved/export?format=pdf&style=formatted&starred_only=true
 ```
 
 - `format=txt` returns `text/plain; charset=utf-8`.
-- `format=pdf` returns `application/pdf` built with reportlab.
-- `style=detailed` keeps the full article body.
+- `format=pdf` returns `application/pdf` (reportlab).
+- `style=detailed` keeps the full stored body.
 - `style=formatted` emits the GK bullet list.
 
-The server sets `Content-Disposition: attachment; filename=...` so
-browsers trigger a real download.
+Responses use `Content-Disposition: attachment` so browsers download the file.
 
 ---
 
 ## Notes & gotchas
 
-- **NewsAPI free tier is dev-only.** It works fine on `localhost`, but the
-  free plan blocks production hosts. Swap to GNews / Mediastack / a paid
-  tier before deploying.
-- **Per-user isolation.** Every `/saved/*` query is filtered by
-  `user_id`; a user can never read or mutate another user's rows.
-- **Article snapshots are stored in full** (title, description, content,
-  source, image URL). This means PDF/TXT downloads keep working even if
-  the original URL later 404s.
-- **No AI summarisation.** The formatted view is rule-based (regex +
-  YAKE). `services/formatter.py` is the single swap point if you later
-  want to plug in an LLM.
+- **NewsData.io quotas and `page_size`.** The client clamps page size for compatibility with free-tier limits; paid plans can raise caps in code if needed (see `news_service.py`).
+- **Per-user isolation.** Every `/saved/*` and `/activity/*` query is scoped to the authenticated `user_id`.
+- **Article snapshots** store the full payload so PDF/TXT keep working if the source URL later fails.
+- **No LLM summarisation** in the formatter; swap `formatter.py` if you want AI-generated bullets later.
 
 ---
 
-## Roadmap
+## Deployment
 
-- React + Tailwind frontend (next phase).
-- Optional Dockerfile + `docker-compose.yml` for deployment.
-- Optional: swap `formatter.py` for an LLM-backed summariser.
+Use the repo root **`docker compose`** setup to run the SPA + API together (`../docker-compose.yml`). The frontend container reverse-proxies `/api` to this backend so the browser sees a single origin.
+
+For a production host, confirm your NewsData.io plan allows that server’s traffic and adjust `CORS_ORIGINS` / `DATABASE_URL` (e.g. move off file-based SQLite) as needed.

@@ -4,9 +4,9 @@ These models form the public I/O contract of the FastAPI app. They are
 intentionally split into three families:
 
 1. **Auth schemas**      - signup/login payloads and the JWT token response.
-2. **News schemas**      - shapes returned by the live NewsAPI-backed endpoints,
-                           in both the detailed and the "formatted" (bulleted)
-                           views.
+2. **News schemas**      - shapes returned by the live NewsData.io-backed
+                           endpoints: detailed `Article` (`GET /news`) and
+                           optional `FormattedArticle` (`GET /news/formatted`).
 3. **Saved schemas**     - CRUD + download shapes for articles the user has
                            chosen to persist.
 
@@ -60,15 +60,15 @@ class TokenPayload(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# News (live, NewsAPI-backed)
+# News (live, NewsData.io-backed)
 # ---------------------------------------------------------------------------
 
 
 class Article(BaseModel):
     """A single article in the detailed view.
 
-    Mirrors the fields NewsAPI.org returns from `/top-headlines` and
-    `/everything`, normalized to our preferred field names.
+    Normalised fields from NewsData.io (and similar upstreams), using our
+    preferred names for the SPA and save payloads.
     """
 
     title: str
@@ -82,7 +82,7 @@ class Article(BaseModel):
     url: Optional[HttpUrl] = None
     image_url: Optional[HttpUrl] = Field(
         default=None,
-        description="NewsAPI `urlToImage`, renamed for clarity.",
+        description="Lead image URL from the upstream feed, normalised to `image_url`.",
     )
     published_at: Optional[datetime] = None
     category: Optional[str] = None
@@ -91,8 +91,8 @@ class Article(BaseModel):
 class FormattedArticle(BaseModel):
     """Condensed, bullet-style view built by `services.formatter`.
 
-    This is what `GET /news/formatted` returns per article. The frontend
-    renders `bullets` directly as a list.
+    Returned by `GET /news/formatted` (optional API). Saved-item exports with
+    `style=formatted` reuse the same formatter in `exporter.py`.
     """
 
     title: str

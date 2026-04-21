@@ -1,6 +1,9 @@
 """Render saved articles to downloadable files.
 
-Two output formats and two styles are supported:
+This module only affects **saved-article exports** (`GET /saved/.../download` and
+`GET /saved/export`). It does not control the live news feed on the home page.
+
+Two output formats × two styles for those exports:
 
                  | style="detailed"            | style="formatted"
     -------------+-----------------------------+-----------------------------

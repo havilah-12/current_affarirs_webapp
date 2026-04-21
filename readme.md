@@ -26,11 +26,11 @@ A  full-stack study tool for competetive exam and  daily news readers aspirants.
 
 - Signup / login with JWT auth; each user's saved articles are isolated.
 - News feed with category / country / Indian-state / keyword filters, persisted in the URL so views are bookmarkable.
-- Quick-read article cards: hero image, title, auto-generated bullet summary (via YAKE), and a one-click Save button.
+- Headline cards: hero image, title, and excerpt from the article description or body, plus a one-click Save button (live feed uses `GET /news`).
 - Save any article. The full snapshot — title, body, image — is stored, so PDF / TXT downloads keep working even if the source URL later 404s.
 - Daily reading streak tracker on the dashboard.
 - Star / unstar saved items.
-- Per-article and bulk downloads, in `.txt` or `.pdf`, in either "detailed" (full body) or "formatted" (bullet) style.
+- Per-article and bulk downloads from saved items, in `.txt` or `.pdf`, in either "detailed" (full body) or "formatted" (YAKE bullet notes) style.
 
 ## Quick start — Docker (recommended)
 

@@ -3,7 +3,7 @@ import { api } from "./client.js";
 /**
  * News API client + dropdown option lists for the UI.
  *
- * Talks to the backend's `/news/formatted` endpoint (quick-read view) and
+ * Talks to the backend's `/news` endpoint (detailed headline feed) and
  * exposes the static option lists the FiltersBar needs:
  *
  *   - CATEGORIES        : full NewsData.io top-headline categories.
@@ -29,7 +29,7 @@ function buildParams({ category, country, q, qInTitle, page, pageSize }) {
 }
 
 export async function fetchNews(filters = {}) {
-  const { data } = await api.get("/news/formatted", {
+  const { data } = await api.get("/news", {
     params: buildParams(filters),
   });
   return data;

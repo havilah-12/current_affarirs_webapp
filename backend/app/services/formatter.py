@@ -1,8 +1,8 @@
 """Convert a raw news article into a GK-style bullet list.
 
-The `Article -> FormattedArticle` transformation is the "quick read" view
-that exam-prep students see when they flip the toggle in the UI. It is also
-reused by the PDF/TXT exporter when `style="formatted"` is requested.
+The `Article -> FormattedArticle` transformation powers `GET /news/formatted`
+(optional JSON API) and the PDF/TXT exporter when `style="formatted"` is
+requested on saved-article downloads.
 
 Implementation: rule-based extraction using YAKE for keyphrase mining.
 YAKE is unsupervised, ships no model weights, and works reasonably on short

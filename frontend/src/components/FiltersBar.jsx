@@ -21,12 +21,12 @@ export default function FiltersBar({ filters, onChange, onSubmitSearch }) {
   }
 
   return (
-    <section className="card p-4 sm:p-5">
+    <section className="card border-brand-200/60 bg-white/95 p-4 sm:p-5">
       {/* Single-row filter strip - wraps gracefully on smaller screens */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:flex-wrap">
         {/* Category */}
         <div className="w-32 shrink-0">
-          <label className="label" htmlFor="filter-category">
+          <label className="label text-brand-700" htmlFor="filter-category">
             Category
           </label>
           <select
@@ -46,7 +46,7 @@ export default function FiltersBar({ filters, onChange, onSubmitSearch }) {
 
         {/* Country */}
         <div className="w-44 shrink-0">
-          <label className="label" htmlFor="filter-country">
+          <label className="label text-brand-700" htmlFor="filter-country">
             Country
           </label>
           <select
@@ -72,7 +72,7 @@ export default function FiltersBar({ filters, onChange, onSubmitSearch }) {
         {/* Region (only when the selected country has a defined subdivision list) */}
         {regions.length > 0 && (
           <div className="w-44 shrink-0">
-            <label className="label" htmlFor="filter-region">
+            <label className="label text-brand-700" htmlFor="filter-region">
               Region
             </label>
             <select
@@ -96,8 +96,8 @@ export default function FiltersBar({ filters, onChange, onSubmitSearch }) {
           onSubmit={handleSubmit}
           className="flex min-w-[14rem] flex-1 flex-col"
         >
-          <label className="label" htmlFor="filter-search">
-            Search <span className="font-normal normal-case text-slate-400">(optional)</span>
+          <label className="label text-brand-700" htmlFor="filter-search">
+            Search <span className="font-normal normal-case text-brand-400">(optional)</span>
           </label>
           <div className="flex gap-2">
             <input

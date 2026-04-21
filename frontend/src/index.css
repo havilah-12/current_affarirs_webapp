@@ -11,18 +11,21 @@
     font-family: "Times New Roman", Times, serif;
     @apply text-slate-800 antialiased;
   }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-brand-800;
+  }
 }
 
 @layer components {
-  /* App-wide background: soft layered gradient + faint blob accents.
-     Teal glow top-left, warm amber glow top-right, on an off-white wash. */
+  /* App-wide background: soft layered gradient + subtle editorial accents. */
   .app-shell {
-    background-color: #f5faf7;
+    background-color: #f8f9fc;
     background-image:
-      radial-gradient(900px circle at 8% -10%, rgba(21, 168, 116, 0.16), transparent 55%),
-      radial-gradient(800px circle at 96% -5%, rgba(239, 124, 10, 0.10), transparent 55%),
-      radial-gradient(600px circle at 50% 100%, rgba(21, 168, 116, 0.05), transparent 60%),
-      linear-gradient(180deg, #f9fdfb 0%, #f1f7f3 100%);
+      radial-gradient(900px circle at 8% -10%, rgba(30, 58, 138, 0.15), transparent 55%),
+      radial-gradient(800px circle at 96% -5%, rgba(212, 160, 23, 0.11), transparent 55%),
+      radial-gradient(600px circle at 50% 100%, rgba(30, 58, 138, 0.05), transparent 60%),
+      linear-gradient(180deg, #fbfcff 0%, #f3f6fb 100%);
     background-attachment: fixed;
   }
 
@@ -51,7 +54,7 @@
   }
 
   .label {
-    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500;
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-brand-700;
   }
 
   .card {
@@ -76,10 +79,10 @@
     background: transparent;
   }
   .scrollbar-soft::-webkit-scrollbar-thumb {
-    background-color: rgba(21, 168, 116, 0.30);
+    background-color: rgba(30, 58, 138, 0.30);
     border-radius: 9999px;
   }
   .scrollbar-soft::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(12, 138, 94, 0.55);
+    background-color: rgba(30, 64, 175, 0.55);
   }
 }

@@ -65,7 +65,7 @@ export default function NewsArticleCard({ article, onSave, isSaving, isSaved }) 
 
         {article.keyphrases?.length > 0 && (
           <div className="mt-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
               Key headings
             </p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">

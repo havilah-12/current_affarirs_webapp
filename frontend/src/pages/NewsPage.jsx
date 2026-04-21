@@ -173,7 +173,7 @@ export default function NewsPage() {
       />
 
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold text-slate-900">Latest headlines</h2>
+        <h2 className="text-xl font-semibold text-brand-800">Latest headlines</h2>
         <div className="flex items-center gap-3">
           {resultMeta && <span className="text-xs text-slate-500">{resultMeta}</span>}
           <button

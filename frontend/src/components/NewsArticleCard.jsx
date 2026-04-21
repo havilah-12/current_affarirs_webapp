@@ -63,6 +63,21 @@ export default function NewsArticleCard({ article, onSave, isSaving, isSaved }) 
           <p className="mt-3 line-clamp-5 text-sm leading-relaxed text-slate-700">{body}</p>
         ) : null}
 
+        {article.keyphrases?.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Key headings
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {article.keyphrases.map((kp, idx) => (
+                <span key={`${kp}-${idx}`} className="chip">
+                  {kp}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4">
           {article.url ? (
             <a

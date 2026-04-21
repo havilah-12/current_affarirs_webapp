@@ -105,7 +105,7 @@ async def get_news(
     _user: User = Depends(get_current_user),
 ) -> NewsResponse:
     """Fetch headlines from NewsData.io and return the detailed view."""
-    return await _fetch(
+    raw = await _fetch(
         category=category,
         country=country,
         q=q,
@@ -113,6 +113,15 @@ async def get_news(
         page=page,
         page_size=page_size,
     )
+    # Keep `/news` as the detailed feed while also exposing lightweight
+    # key-heading chips for the card UI.
+    articles = [
+        article.model_copy(
+            update={"keyphrases": formatter.format_article(article).keyphrases}
+        )
+        for article in raw.articles
+    ]
+    return raw.model_copy(update={"articles": articles})
 
 
 @router.get(

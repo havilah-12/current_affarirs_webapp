@@ -8,7 +8,7 @@
   }
 
   body {
-    font-family: theme("fontFamily.sans");
+    font-family: "Times New Roman", Times, serif;
     @apply text-slate-800 antialiased;
   }
 }

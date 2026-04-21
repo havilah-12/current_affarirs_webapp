@@ -24,7 +24,7 @@ export default function Navbar() {
         <Link to="/" className="group flex items-center gap-3">
           <BrandMark />
           <span className="flex flex-col leading-tight">
-            <span className="text-lg font-bold tracking-tight text-slate-900 sm:text-2xl">
+            <span className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
               Current Affairs
             </span>
             <span className="mt-0.5 hidden text-[11px] font-medium text-slate-500 sm:block">

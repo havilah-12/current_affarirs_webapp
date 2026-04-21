@@ -58,15 +58,18 @@ export default function StreakPanel() {
   }
 
   const days30 = buildHeatmapCells(stats);
+  const readDays30 = days30.filter((d) => d.read).length;
+  const consistencyPct = Math.round((readDays30 / days30.length) * 100);
+  const streakHint = stats.read_today
+    ? "Great momentum - keep the streak alive tomorrow."
+    : "Open Home once today to avoid breaking your streak.";
 
   return (
     <section className="card overflow-hidden p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Daily reading goal</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Open the news at least once a day to keep your streak alive.
-          </p>
+          <p className="mt-0.5 text-sm text-slate-500">{streakHint}</p>
         </div>
         <span
           className={
@@ -94,6 +97,19 @@ export default function StreakPanel() {
         />
         <Stat label="This month" value={stats.days_this_month} suffix="days" />
         <Stat label="Lifetime" value={stats.total_days} suffix="days" />
+      </div>
+
+      <div className="mt-4 rounded-xl border border-slate-200 bg-white/70 px-4 py-3">
+        <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <span>30-day consistency</span>
+          <span>{consistencyPct}%</span>
+        </div>
+        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+          <div
+            className="h-full rounded-full bg-brand-500 transition-all"
+            style={{ width: `${consistencyPct}%` }}
+          />
+        </div>
       </div>
 
       <div className="mt-5">

@@ -86,6 +86,10 @@ class Article(BaseModel):
     )
     published_at: Optional[datetime] = None
     category: Optional[str] = None
+    keyphrases: List[str] = Field(
+        default_factory=list,
+        description="Optional key headings extracted from title/body for UI chips.",
+    )
 
 
 class FormattedArticle(BaseModel):

@@ -29,6 +29,17 @@ _NEWSAPI_TRUNCATION_RE = re.compile(r"\[\+\d+\s*chars\]\s*$")
 
 DEFAULT_MAX_KEYPHRASES = 5
 DEFAULT_NGRAM = 3  # allow uni-, bi-, and tri-grams (e.g. "Reserve Bank of India")
+MIN_KEYPHRASE_WORDS = 2
+MAX_KEYPHRASE_WORDS = 6
+MAX_KEYPHRASE_CHARS = 64
+
+# Phrases that are usually low-signal in this product context.
+_GENERIC_KEYPHRASE_PATTERNS = (
+    re.compile(r"^\d+$"),
+    re.compile(r"^\d{4}$"),  # bare years
+    re.compile(r"^(read more|click here|watch now)$", re.IGNORECASE),
+    re.compile(r"^(updated|live updates|latest|breaking)$", re.IGNORECASE),
+)
 
 
 @lru_cache(maxsize=1)
@@ -80,6 +91,44 @@ def _dedup_preserving_order(items: Iterable[str]) -> List[str]:
     return out
 
 
+def _tokenize_alpha_words(text: str) -> List[str]:
+    """Return lowercase word tokens (letters+digits), preserving order."""
+    return re.findall(r"[a-z0-9]+", text.casefold())
+
+
+def _is_overlapping_phrase(candidate: str, accepted: List[str]) -> bool:
+    """Return True if candidate is mostly contained in an accepted phrase."""
+    candidate_tokens = _tokenize_alpha_words(candidate)
+    if not candidate_tokens:
+        return True
+    candidate_set = set(candidate_tokens)
+    for existing in accepted:
+        existing_set = set(_tokenize_alpha_words(existing))
+        if not existing_set:
+            continue
+        # Suppress near-duplicates / nested phrases:
+        # - exact token-set match
+        # - candidate subset of an existing phrase
+        if candidate_set == existing_set or candidate_set.issubset(existing_set):
+            return True
+    return False
+
+
+def _is_valid_keyphrase(phrase: str) -> bool:
+    """Quality gate to suppress noisy YAKE outputs."""
+    cleaned = _clean_text(phrase)
+    if not cleaned:
+        return False
+    if len(cleaned) > MAX_KEYPHRASE_CHARS:
+        return False
+    words = _tokenize_alpha_words(cleaned)
+    if not (MIN_KEYPHRASE_WORDS <= len(words) <= MAX_KEYPHRASE_WORDS):
+        return False
+    if any(p.search(cleaned) for p in _GENERIC_KEYPHRASE_PATTERNS):
+        return False
+    return True
+
+
 def _extract_keyphrases(text: str, limit: int = DEFAULT_MAX_KEYPHRASES) -> List[str]:
     """Pull the top keyphrases from `text` using YAKE (lower score = better)."""
     if not text.strip():
@@ -94,7 +143,18 @@ def _extract_keyphrases(text: str, limit: int = DEFAULT_MAX_KEYPHRASES) -> List[
 
     ranked.sort(key=lambda item: item[1])
     phrases = [phrase for phrase, _score in ranked if phrase and phrase.strip()]
-    return _dedup_preserving_order(phrases)[:limit]
+    cleaned = _dedup_preserving_order(_clean_text(p) for p in phrases)
+
+    out: List[str] = []
+    for phrase in cleaned:
+        if not _is_valid_keyphrase(phrase):
+            continue
+        if _is_overlapping_phrase(phrase, out):
+            continue
+        out.append(phrase)
+        if len(out) >= limit:
+            break
+    return out
 
 
 def _render_bullets(sentences: List[str]) -> List[str]:

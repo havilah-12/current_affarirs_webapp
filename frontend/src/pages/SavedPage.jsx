@@ -123,10 +123,6 @@ export default function SavedPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Your bookmarked current-affairs articles, available offline as
-            .txt or .pdf.
-          </p>
         </div>
 
         <label className="inline-flex select-none items-center gap-2 text-sm text-slate-700">

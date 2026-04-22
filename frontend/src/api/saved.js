@@ -50,14 +50,13 @@ export async function deleteSaved(id) {
  *
  * @param {number} id      - saved-article id
  * @param {"txt"|"pdf"} format
- * @param {"detailed"|"formatted"} style
  */
-export async function downloadSaved(id, { format = "pdf", style = "detailed" } = {}) {
+export async function downloadSaved(id, { format = "pdf" } = {}) {
   const response = await api.get(`/saved/${id}/download`, {
-    params: { format, style },
+    params: { format },
     responseType: "blob",
   });
-  triggerBlobDownload(response, defaultFilename(`article_${id}_${style}`, format));
+  triggerBlobDownload(response, defaultFilename(`article_${id}`, format));
 }
 
 /**
@@ -65,16 +64,15 @@ export async function downloadSaved(id, { format = "pdf", style = "detailed" } =
  */
 export async function exportAllSaved({
   format = "pdf",
-  style = "formatted",
   starredOnly = false,
 } = {}) {
   const response = await api.get("/saved/export", {
-    params: { format, style, starred_only: starredOnly },
+    params: { format, starred_only: starredOnly },
     responseType: "blob",
   });
   triggerBlobDownload(
     response,
-    defaultFilename(`saved_${style}${starredOnly ? "_starred" : ""}`, format)
+    defaultFilename(`saved_articles${starredOnly ? "_starred" : ""}`, format)
   );
 }
 

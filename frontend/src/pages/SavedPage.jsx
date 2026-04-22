@@ -21,7 +21,7 @@ import { useToast } from "../hooks/useToast.js";
  *   - filter by starred only
  *   - star / unstar
  *   - delete
- *   - download individually (txt/pdf x detailed/formatted)
+ *   - download individually (txt/pdf)
  *   - bulk export everything (or just starred)
  */
 export default function SavedPage() {
@@ -35,7 +35,6 @@ export default function SavedPage() {
 
   // bulk export controls
   const [bulkFormat, setBulkFormat] = useState("pdf");
-  const [bulkStyle, setBulkStyle] = useState("formatted");
   const [bulkBusy, setBulkBusy] = useState(false);
 
   const { toast, showToast } = useToast();
@@ -92,10 +91,10 @@ export default function SavedPage() {
     }
   }
 
-  async function handleDownload(article, { format, style }) {
+  async function handleDownload(article, { format }) {
     setRowBusy(article.id, "download", true);
     try {
-      await downloadSaved(article.id, { format, style });
+      await downloadSaved(article.id, { format });
     } catch (err) {
       showToast(apiErrorMessage(err, "Download failed."), "error");
     } finally {
@@ -108,7 +107,6 @@ export default function SavedPage() {
     try {
       await exportAllSaved({
         format: bulkFormat,
-        style: bulkStyle,
         starredOnly,
       });
     } catch (err) {
@@ -153,20 +151,6 @@ export default function SavedPage() {
             >
               <option value="pdf">PDF</option>
               <option value="txt">Plain text</option>
-            </select>
-          </div>
-          <div>
-            <label className="label" htmlFor="bulk-style">
-              Style
-            </label>
-            <select
-              id="bulk-style"
-              value={bulkStyle}
-              onChange={(e) => setBulkStyle(e.target.value)}
-              className="input py-1.5 text-sm"
-            >
-              <option value="formatted">Formatted (quick read)</option>
-              <option value="detailed">Detailed (full articles)</option>
             </select>
           </div>
         </div>

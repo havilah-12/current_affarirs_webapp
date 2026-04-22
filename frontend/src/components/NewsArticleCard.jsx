@@ -55,10 +55,6 @@ export default function NewsArticleCard({ article, onSave, isSaving, isSaved }) 
           {article.title}
         </h3>
 
-        {article.author && (
-          <p className="mt-1 text-xs text-slate-500">By {article.author}</p>
-        )}
-
         {body ? (
           <p className="mt-3 line-clamp-5 text-sm leading-relaxed text-slate-700">{body}</p>
         ) : null}

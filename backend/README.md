@@ -2,9 +2,9 @@
 
 FastAPI backend for a current-affairs / GK study webapp. It pulls live
 headlines from [NewsData.io](https://newsdata.io), serves a detailed feed on
-`GET /news` (what the SPA uses), optionally exposes a YAKE bullet view on
-`GET /news/formatted`, lets signed-in users bookmark articles, tracks a daily
-reading streak, and serves saved rows as `.txt` or `.pdf` downloads.
+`GET /news` (with key-heading chips), lets signed-in users bookmark articles,
+tracks a daily reading streak, and serves saved rows as `.txt` or `.pdf`
+downloads.
 
 The React + Vite + Tailwind frontend lives in [`../frontend`](../frontend).
 For Docker and one-command startup, see the repo root [`readme.md`](../readme.md).
@@ -47,7 +47,7 @@ backend/
       pdf_images.py       # PDF image helpers
     routers/
       auth.py             # /auth/signup, /auth/login, /auth/me
-      news.py             # /news, /news/formatted
+      news.py             # /news
       saved.py            # /saved CRUD + download + export
       activity.py         # /activity/ping, /activity/stats (streak)
     main.py               # FastAPI app factory
@@ -137,8 +137,7 @@ Auth routes are public (signup/login) except **`GET /auth/me`**, which requires 
 
 | Method | Path               | Query params | Notes |
 |--------|--------------------|--------------|-------|
-| GET    | `/news`            | `category`, `country`, `q`, `q_in_title`, `page`, `page_size` | Detailed feed (cleaned passthrough). |
-| GET    | `/news/formatted`  | same                                                          | Same filters; each article passed through `formatter.format_articles` (optional; not used by the SPA). |
+| GET    | `/news`            | `category`, `country`, `q`, `q_in_title`, `page`, `page_size` | Detailed feed (cleaned passthrough + key headings). |
 
 **Categories** (NewsData.io vocabulary): `business`, `crime`, `domestic`, `education`, `entertainment`, `environment`, `food`, `health`, `lifestyle`, `other`, `politics`, `science`, `sports`, `technology`, `top`, `tourism`, `world`.
 
@@ -155,8 +154,8 @@ Broad keyword search uses the same NewsData.io endpoint with a `q` filter; there
 | GET    | `/saved/{id}`             | Read one.                                                               |
 | PATCH  | `/saved/{id}`             | Toggle `starred`.                                                       |
 | DELETE | `/saved/{id}`             | Remove.                                                                 |
-| GET    | `/saved/{id}/download`    | `format=txt|pdf`, `style=detailed|formatted`. Single-article export.    |
-| GET    | `/saved/export`           | Bulk download; same query params + `starred_only`.                     |
+| GET    | `/saved/{id}/download`    | `format=txt|pdf`. Single-article export.                               |
+| GET    | `/saved/export`           | Bulk download; `format=txt|pdf` + optional `starred_only`.             |
 
 ### Activity (reading streak)
 
@@ -167,32 +166,24 @@ Broad keyword search uses the same NewsData.io endpoint with a `q` filter; there
 
 ---
 
-## How the live feed vs formatted JSON vs exports relate
+## How feed data and exports relate
 
-The **detailed feed** (`GET /news`) returns normalised fields: title, description, content, source, image URL, published time, etc., after cleaning HTML/truncation artefacts from the upstream payload. **The React app uses this endpoint only.**
+The **live feed** (`GET /news`) returns normalised fields: title, description, content, source, image URL, published time, etc., after cleaning HTML/truncation artefacts from the upstream payload. It also includes YAKE-derived `keyphrases` for the "Key headings" chips in the UI.
 
-The **formatted JSON feed** (`GET /news/formatted`) runs each article through `services/formatter.py`, which:
-
-1. Cleans whitespace and strips common truncation markers (including legacy `[+N chars]` patterns).
-2. Picks the first sentence of the description as a one-line summary where applicable.
-3. Runs YAKE on `title + description` for the top keyphrases.
-4. Emits a `bullets: [str]` list.
-
-The same `format_article()` logic feeds the **`style=formatted`** branch in `exporter.py` for **saved-article downloads**, so exported “formatted” study notes match the bullet pipeline even though the home feed no longer renders that JSON.
+For saved downloads, `exporter.py` now uses one normal layout (full title/body/meta) in either TXT or PDF.
 
 ---
 
 ## Downloads
 
 ```
-GET /saved/{id}/download?format=pdf&style=formatted
-GET /saved/export?format=pdf&style=formatted&starred_only=true
+GET /saved/{id}/download?format=pdf
+GET /saved/export?format=pdf&starred_only=true
 ```
 
 - `format=txt` returns `text/plain; charset=utf-8`.
 - `format=pdf` returns `application/pdf` (reportlab).
-- `style=detailed` keeps the full stored body.
-- `style=formatted` emits the GK bullet list.
+- The export layout is single-mode (no style toggle): full title + body + metadata.
 
 Responses use `Content-Disposition: attachment` so browsers download the file.
 

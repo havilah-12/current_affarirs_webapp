@@ -1,13 +1,8 @@
-"""Live news endpoints backed by NewsData.io.
+"""Live news endpoint backed by NewsData.io.
 
-- `GET /news`           : detailed headline feed (titles, descriptions, content,
-                          source, image, etc.) — this is what the SPA uses.
-- `GET /news/formatted` : optional condensed "GK quick-read" view (YAKE
-                          bullets) for the same filters; same auth rules.
+- `GET /news`: detailed headline feed with metadata and key-heading chips.
 
-Both accept the same query parameters.
-
-Endpoints are protected by `get_current_user` because the upstream API key is
+The route is protected by `get_current_user` because the upstream API key is
 a paid resource we don't want exposed to anonymous callers.
 """
 
@@ -19,7 +14,7 @@ from fastapi import APIRouter, Depends, Query
 
 from ..deps import get_current_user
 from ..models import User
-from ..schemas import FormattedNewsResponse, NewsResponse
+from ..schemas import NewsResponse
 from ..services import formatter, news_service
 from ..services.news_service import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 
@@ -28,7 +23,7 @@ router = APIRouter(prefix="/news", tags=["news"])
 
 
 # ---------------------------------------------------------------------------
-# Query-parameter aliases (shared by both routes)
+# Query-parameter aliases
 # ---------------------------------------------------------------------------
 
 _CategoryQuery = Query(
@@ -122,35 +117,3 @@ async def get_news(
         for article in raw.articles
     ]
     return raw.model_copy(update={"articles": articles})
-
-
-@router.get(
-    "/formatted",
-    response_model=FormattedNewsResponse,
-    summary="Condensed 'GK quick-read' view of the same feed",
-)
-async def get_news_formatted(
-    category: Optional[str] = _CategoryQuery,
-    country: Optional[str] = _CountryQuery,
-    q: Optional[str] = _QueryQuery,
-    q_in_title: Optional[str] = _QInTitleQuery,
-    page: int = _PageQuery,
-    page_size: int = _PageSizeQuery,
-    _user: User = Depends(get_current_user),
-) -> FormattedNewsResponse:
-    """Fetch headlines and transform each into a GK-style bullet list."""
-    raw = await _fetch(
-        category=category,
-        country=country,
-        q=q,
-        q_in_title=q_in_title,
-        page=page,
-        page_size=page_size,
-    )
-
-    return FormattedNewsResponse(
-        total_results=raw.total_results,
-        page=raw.page,
-        page_size=raw.page_size,
-        articles=formatter.format_articles(raw.articles),
-    )

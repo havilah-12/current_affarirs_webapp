@@ -1,8 +1,8 @@
-"""Convert a raw news article into a GK-style bullet list.
+"""Convert a raw news article into derived study-friendly fields.
 
-The `Article -> FormattedArticle` transformation powers `GET /news/formatted`
-(optional JSON API) and the PDF/TXT exporter when `style="formatted"` is
-requested on saved-article downloads.
+`/news` reuses YAKE keyphrase output for "Key headings" chips.
+This module also keeps the `FormattedArticle` transformation available for
+future/report-style rendering needs.
 
 Implementation: rule-based extraction using YAKE for keyphrase mining.
 YAKE is unsupervised, ships no model weights, and works reasonably on short

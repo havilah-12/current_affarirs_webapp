@@ -9,7 +9,7 @@ import { formatPublished } from "../utils/time.js";
  * Responsibilities:
  *   - Show the stored snapshot (title, source, date, description).
  *   - Toggle `starred`.
- *   - Download in txt/pdf (detailed or formatted).
+ *   - Download in txt/pdf.
  *   - Delete.
  *
  * Actions are delegated up to the page via callbacks so all network side
@@ -24,10 +24,9 @@ export default function SavedArticleCard({
 }) {
   const published = formatPublished(article.published_at);
   const [downloadFormat, setDownloadFormat] = useState("pdf");
-  const [downloadStyle, setDownloadStyle] = useState("detailed");
 
   async function handleDownload() {
-    await onDownload({ format: downloadFormat, style: downloadStyle });
+    await onDownload({ format: downloadFormat });
   }
 
   return (
@@ -75,20 +74,6 @@ export default function SavedArticleCard({
             >
               <option value="pdf">PDF</option>
               <option value="txt">Plain text</option>
-            </select>
-          </div>
-          <div>
-            <label className="label text-xs" htmlFor={`style-${article.id}`}>
-              Style
-            </label>
-            <select
-              id={`style-${article.id}`}
-              value={downloadStyle}
-              onChange={(e) => setDownloadStyle(e.target.value)}
-              className="input py-1.5 text-sm"
-            >
-              <option value="detailed">Detailed (full article)</option>
-              <option value="formatted">Formatted (quick read)</option>
             </select>
           </div>
         </div>

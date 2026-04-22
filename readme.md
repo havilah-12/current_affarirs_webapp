@@ -30,7 +30,7 @@ A  full-stack study tool for competetive exam and  daily news readers aspirants.
 - Save any article. The full snapshot — title, body, image — is stored, so PDF / TXT downloads keep working even if the source URL later 404s.
 - Daily reading streak tracker on the dashboard.
 - Star / unstar saved items.
-- Per-article and bulk downloads from saved items, in `.txt` or `.pdf`, in either "detailed" (full body) or "formatted" (YAKE bullet notes) style.
+- Per-article and bulk downloads from saved items in `.txt` or `.pdf` (single normal export layout).
 
 ## Quick start — Docker (recommended)
 

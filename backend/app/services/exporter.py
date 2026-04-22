@@ -3,16 +3,16 @@
 This module only affects **saved-article exports** (`GET /saved/.../download` and
 `GET /saved/export`). It does not control the live news feed on the home page.
 
-Two output formats × two styles for those exports:
+Two output formats are supported for a single, normal export layout:
 
-                 | style="detailed"            | style="formatted"
-    -------------+-----------------------------+-----------------------------
-    format="txt" | full title + body + meta    | GK bullet list
-    format="pdf" | paragraphed PDF of the same | bullet PDF of the same
+                 | normal export
+    -------------+-----------------------------
+    format="txt" | full title + body + meta
+    format="pdf" | paragraphed PDF of the same
 
 `build_txt` / `build_pdf` both accept one *or more* articles so the same
-code path powers both `GET /saved/{id}/download` and the bulk
-`GET /saved/export` endpoint.
+code path powers both `GET /saved/{id}/download` and the bulk `GET /saved/export`
+endpoint.
 
 Sub-modules:
     pdf_fonts  - Unicode TrueType registration + ASCII fallbacks.
@@ -32,8 +32,6 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    ListFlowable,
-    ListItem,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -41,8 +39,6 @@ from reportlab.platypus import (
 )
 
 from ..models import SavedArticle
-from ..schemas import Article
-from .formatter import format_article
 from .pdf_fonts import BOLD_FONT, REGULAR_FONT, to_pdf_safe_text
 from .pdf_images import fetch_image_flowable
 
@@ -85,23 +81,6 @@ def _saved_to_export(article: SavedArticle) -> _ExportArticle:
         image_url=article.image_url,
         published_at=article.published_at,
         category=article.category,
-    )
-
-
-def _export_to_api_article(ea: _ExportArticle) -> Article:
-    """Build a pydantic `Article` for the formatter layer."""
-    return Article(
-        title=ea.title,
-        description=ea.description,
-        content=ea.content,
-        source=ea.source,
-        author=ea.author,
-        url=ea.url if ea.url and ea.url.startswith(("http://", "https://")) else None,
-        image_url=ea.image_url
-        if ea.image_url and ea.image_url.startswith(("http://", "https://"))
-        else None,
-        published_at=ea.published_at,
-        category=ea.category,
     )
 
 
@@ -206,28 +185,16 @@ def _txt_detailed(article: _ExportArticle) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _txt_formatted(article: _ExportArticle) -> str:
-    formatted = format_article(_export_to_api_article(article))
-    body = "\n".join(f"- {bullet}" for bullet in formatted.bullets)
-    return body.rstrip() + "\n"
-
-
 def build_txt(
     articles: Sequence[SavedArticle | _ExportArticle],
-    *,
-    style: str = "detailed",
 ) -> bytes:
     """Render one or more articles to a UTF-8 encoded `.txt` payload."""
-    if style not in {"detailed", "formatted"}:
-        raise ValueError(f"Unknown style: {style!r}")
-
     items = _normalize_inputs(articles)
     if not items:
         return b"No articles.\n"
 
-    renderer = _txt_detailed if style == "detailed" else _txt_formatted
     separator = "\n" + ("-" * 80) + "\n\n"
-    body = separator.join(renderer(a) for a in items)
+    body = separator.join(_txt_detailed(a) for a in items)
     return body.encode("utf-8")
 
 
@@ -264,13 +231,6 @@ def _pdf_styles():
             fontSize=11,
             leading=15,
             spaceAfter=10,
-        ),
-        "bullet": ParagraphStyle(
-            "ArticleBullet",
-            parent=base["BodyText"],
-            fontName=REGULAR_FONT,
-            fontSize=11,
-            leading=15,
         ),
         "link": ParagraphStyle(
             "ArticleLink",
@@ -347,65 +307,12 @@ def _pdf_flowables_detailed(article: _ExportArticle, styles) -> list:
     return flow
 
 
-def _pdf_flowables_formatted(article: _ExportArticle, styles) -> list:
-    formatted = format_article(_export_to_api_article(article))
-
-    flow: list = [Paragraph(_escape_pdf(formatted.title), styles["title"])]
-
-    meta_parts: List[str] = []
-    if formatted.source:
-        meta_parts.append(_escape_pdf(formatted.source))
-    published = _format_date_human(formatted.published_at)
-    if published:
-        meta_parts.append(_escape_pdf(published))
-    if formatted.category:
-        meta_parts.append(_escape_pdf(formatted.category.capitalize()))
-    meta = _pdf_meta_paragraph(meta_parts, styles)
-    if meta:
-        flow.append(meta)
-
-    image_url = str(formatted.image_url) if formatted.image_url else None
-    hero = fetch_image_flowable(image_url)
-    if hero is not None:
-        flow.append(hero)
-        flow.append(Spacer(1, 8))
-
-    list_items = [
-        ListItem(Paragraph(_escape_pdf(bullet), styles["bullet"]), leftIndent=12)
-        for bullet in formatted.bullets
-    ]
-    if list_items:
-        flow.append(
-            ListFlowable(
-                list_items,
-                bulletType="bullet",
-                start="circle",
-                leftIndent=18,
-            )
-        )
-
-    if formatted.url:
-        escaped_url = _escape_pdf(str(formatted.url))
-        flow.append(
-            Paragraph(
-                f'<link href="{escaped_url}">{escaped_url}</link>',
-                styles["link"],
-            )
-        )
-
-    return flow
-
-
 def build_pdf(
     articles: Sequence[SavedArticle | _ExportArticle],
     *,
-    style: str = "detailed",
     title: str = "Current Affairs",
 ) -> bytes:
     """Render one or more articles to a PDF and return the raw bytes."""
-    if style not in {"detailed", "formatted"}:
-        raise ValueError(f"Unknown style: {style!r}")
-
     items = _normalize_inputs(articles)
 
     buffer = io.BytesIO()
@@ -425,11 +332,8 @@ def build_pdf(
     if not items:
         flowables.append(Paragraph("No articles.", styles["body"]))
     else:
-        renderer = (
-            _pdf_flowables_detailed if style == "detailed" else _pdf_flowables_formatted
-        )
         for idx, article in enumerate(items):
-            flowables.extend(renderer(article, styles))
+            flowables.extend(_pdf_flowables_detailed(article, styles))
             if idx != len(items) - 1:
                 flowables.append(Spacer(1, 12))
                 flowables.append(PageBreak())

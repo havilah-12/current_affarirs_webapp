@@ -11,7 +11,7 @@ Endpoints
 - `GET    /saved/{id}`               : read one saved article.
 - `PATCH  /saved/{id}`               : toggle metadata (currently `starred`).
 - `DELETE /saved/{id}`               : remove an entry.
-- `GET    /saved/{id}/download`      : txt/pdf of one article (detailed/formatted).
+- `GET    /saved/{id}/download`      : txt/pdf of one article (normal export layout).
 - `GET    /saved/export`             : bulk txt/pdf of all saved articles.
 """
 
@@ -30,7 +30,6 @@ from ..deps import get_current_user, get_db
 from ..models import SavedArticle, User
 from ..schemas import (
     DownloadFormat,
-    DownloadStyle,
     Message,
     SavedArticleCreate,
     SavedArticleRead,
@@ -85,8 +84,6 @@ def _is_dirty_cached_content(body: Optional[str]) -> bool:
 def _ensure_full_content(
     db: Session,
     articles: Iterable[SavedArticle],
-    *,
-    style: DownloadStyle,
 ) -> None:
     """Lazily populate `SavedArticle.full_content` for download requests.
 
@@ -98,12 +95,7 @@ def _ensure_full_content(
     (byline + "Also Read" tail) are re-fetched so old downloads get the
     cleaned-up copy too.
 
-    The "formatted" (quick-read) style only renders bullets, so we skip the
-    network call there - it gains us nothing.
     """
-    if style != "detailed":
-        return
-
     dirty = False
     now = datetime.now(timezone.utc)
     for article in articles:
@@ -214,7 +206,6 @@ def export_all(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     format: DownloadFormat = Query(default="pdf"),
-    style: DownloadStyle = Query(default="formatted"),
     starred_only: bool = Query(default=False),
 ) -> Response:
     """Bulk export of every saved article (or just the starred ones)."""
@@ -224,14 +215,14 @@ def export_all(
     stmt = stmt.order_by(SavedArticle.saved_at.desc())
 
     articles = list(db.execute(stmt).scalars().all())
-    _ensure_full_content(db, articles, style=style)
+    _ensure_full_content(db, articles)
 
     if format == "pdf":
-        payload = exporter.build_pdf(articles, style=style, title="Saved Current Affairs")
+        payload = exporter.build_pdf(articles, title="Saved Current Affairs")
     else:
-        payload = exporter.build_txt(articles, style=style)
+        payload = exporter.build_txt(articles)
 
-    base = f"saved_{style}"
+    base = "saved_articles"
     return _build_download_response(payload=payload, fmt=format, base_filename=base)
 
 
@@ -292,7 +283,7 @@ def delete_saved(
 
 @router.get(
     "/{article_id}/download",
-    summary="Download one saved article as txt or pdf (detailed or formatted)",
+    summary="Download one saved article as txt or pdf",
     response_class=Response,
 )
 def download_saved(
@@ -300,21 +291,20 @@ def download_saved(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     format: DownloadFormat = Query(default="pdf"),
-    style: DownloadStyle = Query(default="detailed"),
 ) -> Response:
     article = _load_owned(db, current_user, article_id)
-    _ensure_full_content(db, [article], style=style)
+    _ensure_full_content(db, [article])
 
     if format == "pdf":
-        payload = exporter.build_pdf([article], style=style, title=article.title)
+        payload = exporter.build_pdf([article], title=article.title)
     else:
-        payload = exporter.build_txt([article], style=style)
+        payload = exporter.build_txt([article])
 
     base_name = article.title or f"article_{article.id}"
     return _build_download_response(
         payload=payload,
         fmt=format,
-        base_filename=f"{base_name}_{style}",
+        base_filename=base_name,
     )
 
 

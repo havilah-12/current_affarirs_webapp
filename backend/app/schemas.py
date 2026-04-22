@@ -4,9 +4,8 @@ These models form the public I/O contract of the FastAPI app. They are
 intentionally split into three families:
 
 1. **Auth schemas**      - signup/login payloads and the JWT token response.
-2. **News schemas**      - shapes returned by the live NewsData.io-backed
-                           endpoints: detailed `Article` (`GET /news`) and
-                           optional `FormattedArticle` (`GET /news/formatted`).
+2. **News schemas**      - detailed `Article` rows returned by `GET /news`,
+                           plus `FormattedArticle` used by export formatting.
 3. **Saved schemas**     - CRUD + download shapes for articles the user has
                            chosen to persist.
 
@@ -95,8 +94,7 @@ class Article(BaseModel):
 class FormattedArticle(BaseModel):
     """Condensed, bullet-style view built by `services.formatter`.
 
-    Returned by `GET /news/formatted` (optional API). Saved-item exports with
-    `style=formatted` reuse the same formatter in `exporter.py`.
+    Kept as a reusable transformation output for formatter-driven views/exports.
     """
 
     title: str
@@ -129,15 +127,6 @@ class NewsResponse(BaseModel):
     page: int = 1
     page_size: int = 20
     articles: List[Article] = Field(default_factory=list)
-
-
-class FormattedNewsResponse(BaseModel):
-    """Envelope returned by `GET /news/formatted`."""
-
-    total_results: int = 0
-    page: int = 1
-    page_size: int = 20
-    articles: List[FormattedArticle] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +182,6 @@ class Message(BaseModel):
 
 
 DownloadFormat = Literal["txt", "pdf"]
-DownloadStyle = Literal["detailed", "formatted"]
 
 
 # ---------------------------------------------------------------------------

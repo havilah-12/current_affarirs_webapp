@@ -144,9 +144,9 @@ The News page calls `GET /news` (detailed articles) and renders each row with
 Cards are laid out as a horizontal scroll-snap carousel (3 per page on wide
 screens, 2 on tablet, 1 on mobile).
 
-The backend still exposes `GET /news/formatted` (YAKE bullet view) for API
-clients; the SPA does not use it. **Formatted vs detailed** on downloads is
-only on the Saved page (`style` query param), not on the live feed.
+The backend enriches each `/news` article with YAKE-derived `keyphrases` so
+cards can render "Key headings" chips. **Formatted vs detailed** on downloads
+is only on the Saved page (`style` query param), not on the live feed.
 
 Selecting an Indian state sends `qInTitle=<state>` to the backend so
 results are headlines *about* that state, not just any article that
@@ -169,8 +169,7 @@ same way:
 4. Revoke the object URL on the next tick.
 
 The `SavedArticleCard` and the bulk-export bar on `SavedPage` both let
-the user pick `format = txt | pdf` and `style = detailed | formatted`
-before firing the download.
+the user pick `format = txt | pdf` before firing the download.
 
 ---
 

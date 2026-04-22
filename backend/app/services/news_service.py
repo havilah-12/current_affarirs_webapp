@@ -186,7 +186,20 @@ def _first_of(value: Any) -> Optional[str]:
     return None
 
 
-def _normalize_article(raw: Dict[str, Any], fallback_category: Optional[str]) -> Optional[Article]:
+def _category_values(value: Any) -> List[str]:
+    """Return normalized category tokens from a string/list category field."""
+    if isinstance(value, list):
+        out: List[str] = []
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                out.append(item.strip().lower())
+        return out
+    if isinstance(value, str) and value.strip():
+        return [value.strip().lower()]
+    return []
+
+
+def _normalize_article(raw: Dict[str, Any], requested_category: Optional[str]) -> Optional[Article]:
     """Convert one raw NewsData.io article dict into our `Article` schema.
 
     Description and content are cleaned (HTML stripped, entities decoded,
@@ -208,6 +221,12 @@ def _normalize_article(raw: Dict[str, Any], fallback_category: Optional[str]) ->
     description = _truncate_words(_clean_text(raw.get("description")), DESCRIPTION_MAX_WORDS)
     content = _truncate_words(_clean_text(raw.get("content")), CONTENT_MAX_WORDS)
 
+    raw_categories = _category_values(raw.get("category"))
+    # NewsData can occasionally return mixed-category rows even when category is
+    # requested. Enforce strict category matching server-side for UI correctness.
+    if requested_category and requested_category not in raw_categories:
+        return None
+
     try:
         return Article(
             title=title,
@@ -218,7 +237,7 @@ def _normalize_article(raw: Dict[str, Any], fallback_category: Optional[str]) ->
             url=_coerce_url(raw.get("link")),
             image_url=_coerce_url(raw.get("image_url")),
             published_at=_parse_published_at(raw.get("pubDate")),
-            category=_first_of(raw.get("category")) or fallback_category,
+            category=requested_category or _first_of(raw.get("category")),
         )
     except Exception:
         # Defensive: one bad row shouldn't sink the whole response.
@@ -393,7 +412,7 @@ async def fetch_top_headlines(
     for raw in raw_articles:
         if not isinstance(raw, dict):
             continue
-        normalised = _normalize_article(raw, fallback_category=params.get("category"))
+        normalised = _normalize_article(raw, requested_category=params.get("category"))
         if normalised is not None:
             articles.append(normalised)
 

@@ -29,17 +29,11 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # --- NewsData.io ---
-    # Primary setting name; NEWSAPI_KEY is still accepted as a legacy fallback
-    # so older .env files (which used the NewsAPI.org naming) keep working.
     NEWSDATA_API_KEY: str = Field(
         default="",
         description="API key for https://newsdata.io. Required for live news endpoints.",
     )
     NEWSDATA_BASE_URL: str = "https://newsdata.io/api/1"
-
-    # Legacy alias for NEWSDATA_API_KEY (read via `news_api_key` property
-    # only). Old .env files that still use this name keep working.
-    NEWSAPI_KEY: str = Field(default="", description="Legacy alias for NEWSDATA_API_KEY.")
 
     # --- JWT / Auth ---
     JWT_SECRET: str = Field(
@@ -75,8 +69,8 @@ class Settings(BaseSettings):
 
     @property
     def news_api_key(self) -> str:
-        """Resolve the NewsData.io key, falling back to the legacy field name."""
-        return (self.NEWSDATA_API_KEY or self.NEWSAPI_KEY).strip()
+        """Resolve the NewsData.io key."""
+        return self.NEWSDATA_API_KEY.strip()
 
 
 @lru_cache(maxsize=1)

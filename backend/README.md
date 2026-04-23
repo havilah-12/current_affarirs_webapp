@@ -32,7 +32,7 @@ backend/
   .env.example
   app/
     __init__.py
-    config.py             # Settings (reads .env; NEWSDATA_API_KEY + legacy NEWSAPI_KEY)
+    config.py             # Settings (reads .env; NEWSDATA_API_KEY)
     database.py           # engine, SessionLocal, Base, init_db()
     models.py             # User, SavedArticle, ReadingActivity
     schemas.py            # Pydantic request/response models
@@ -86,7 +86,6 @@ cp .env.example .env
 Open `.env` and set at minimum:
 
 - **`NEWSDATA_API_KEY`** — free dev key from <https://newsdata.io/register>  
-  (`NEWSAPI_KEY` is still read as a **legacy alias** for the same value; prefer `NEWSDATA_API_KEY`.)
 - **`JWT_SECRET`** — long random string, e.g.:
 
   ```bash

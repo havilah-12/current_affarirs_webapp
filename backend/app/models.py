@@ -133,6 +133,9 @@ class ReadingActivity(Base):
         nullable=False,
     )
     day: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    # Last news category the user had selected when this UTC day was recorded
+    # (or updated via a later /activity/ping the same day).
+    category: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

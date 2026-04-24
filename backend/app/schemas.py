@@ -189,6 +189,16 @@ DownloadFormat = Literal["txt", "pdf"]
 # ---------------------------------------------------------------------------
 
 
+class ActivityPingIn(BaseModel):
+    """Optional body for `POST /activity/ping` (news filter context)."""
+
+    category: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description="News category from the home feed (e.g. 'technology'). Updates the same day.",
+    )
+
+
 class ActivityPingResponse(BaseModel):
     """Returned by `POST /activity/ping` after a (possibly idempotent) record."""
 
@@ -198,6 +208,13 @@ class ActivityPingResponse(BaseModel):
     )
     current_streak: int
     longest_streak: int
+
+
+class ReadDayInMonth(BaseModel):
+    """A calendar day in the selected month the user read, with optional category tag."""
+
+    day: date
+    category: Optional[str] = None
 
 
 class ActivityStats(BaseModel):
@@ -213,4 +230,14 @@ class ActivityStats(BaseModel):
     total_days: int = Field(description="Lifetime distinct days the user has opened the news.")
     last_30_days: List[date] = Field(
         description="The dates (within the last 30 days, today inclusive) on which the user read."
+    )
+    calendar_year: int = Field(
+        description="The calendar year for `read_days_in_month` (UTC; query params or current month)."
+    )
+    calendar_month: int = Field(
+        description="1-12 month for `read_days_in_month` (UTC; query params or current month)."
+    )
+    read_days_in_month: List[ReadDayInMonth] = Field(
+        default_factory=list,
+        description="Days in the selected UTC month the user read, with last-known category for that day.",
     )

@@ -1,40 +1,62 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { getActivityStats } from "../api/activity.js";
+
+/** Emoji per NewsData.io category (matches FiltersBar / backend). */
+const CATEGORY_ICONS = {
+  business: "💼",
+  crime: "⚖️",
+  domestic: "🏠",
+  education: "🎓",
+  entertainment: "🎬",
+  environment: "🌱",
+  food: "🍽",
+  health: "🏥",
+  lifestyle: "✨",
+  other: "📋",
+  politics: "🏛",
+  science: "🔬",
+  sports: "⚽",
+  technology: "💻",
+  top: "⭐",
+  tourism: "✈",
+  world: "🌍",
+};
 
 /**
  * Daily-reading-streak widget shown at the top of the Dashboard.
  *
- * Renders four headline metrics (today, current streak, longest streak,
- * this month) and a 30-day heatmap so the user can see their consistency
- * at a glance. Visiting the Home page once a calendar day (UTC) is enough
- * to keep the streak alive.
+ * Four headline metrics, 30-day consistency, and a month calendar (UTC) with
+ * category icons on days the user read from Home. Visiting Home once a UTC
+ * day (with a category filter) records that day and tag.
  */
 export default function StreakPanel() {
+  const [view, setView] = useState(utcCurrentMonth);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const load = useCallback(() => {
+    return getActivityStats(view.y, view.m)
+      .then((data) => {
+        setStats(data);
+        setError(null);
+      })
+      .catch(() => {
+        setError("Couldn't load streak stats.");
+      });
+  }, [view.y, view.m]);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getActivityStats()
-      .then((data) => {
-        if (!cancelled) {
-          setStats(data);
-          setError(null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setError("Couldn't load streak stats.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    load().finally(() => {
+      if (!cancelled) setLoading(false);
+    });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [load]);
 
   if (loading) {
     return (
@@ -63,6 +85,11 @@ export default function StreakPanel() {
   const streakHint = stats.read_today
     ? "Great momentum - keep the streak alive tomorrow."
     : "Open Home once today to avoid breaking your streak.";
+
+  const readMap = new Map(
+    (stats.read_days_in_month || []).map((r) => [String(r.day).slice(0, 10), r.category]),
+  );
+  const nextMonthDisabled = isNextMonthBeyondCurrent(shiftMonth(view, 1), stats.today);
 
   return (
     <section className="card overflow-hidden p-5">
@@ -112,38 +139,182 @@ export default function StreakPanel() {
         </div>
       </div>
 
-      <div className="mt-5">
-        <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
-          <span>Last 30 days</span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block h-3 w-3 rounded-sm bg-slate-200" />
-            <span>Missed</span>
-            <span className="ml-2 inline-block h-3 w-3 rounded-sm bg-brand-500" />
-            <span>Read</span>
-          </span>
+      <div className="mt-6">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-slate-800">Your calendar</h3>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setView((v) => shiftMonth(v, -1))}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-sm text-slate-700 shadow-sm transition hover:bg-slate-50"
+              aria-label="Previous month"
+            >
+              ←
+            </button>
+            <span className="min-w-[10rem] text-center text-sm font-medium text-slate-800">
+              {formatMonthLabel(stats.calendar_year, stats.calendar_month)}
+            </span>
+            <button
+              type="button"
+              onClick={() => setView((v) => shiftMonth(v, 1))}
+              disabled={nextMonthDisabled}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-sm text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Next month"
+            >
+              →
+            </button>
+          </div>
         </div>
-        <div
-          className="grid gap-1"
-          style={{ gridTemplateColumns: "repeat(30, minmax(0, 1fr))" }}
-        >
-          {days30.map((cell) => (
-            <div
-              key={cell.iso}
-              title={`${cell.iso}${cell.read ? " - read" : ""}`}
-              className={
-                "h-5 w-full rounded-sm transition " +
-                (cell.read
-                  ? "bg-brand-500 ring-1 ring-brand-600/40"
-                  : cell.isToday
-                  ? "bg-slate-200 ring-1 ring-brand-300"
-                  : "bg-slate-200")
-              }
-            />
+
+        <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          {WEEKDAYS.map((d) => (
+            <div key={d} className="px-0.5">
+              {d}
+            </div>
           ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1.5">
+          {buildMonthGridCells(
+            stats.calendar_year,
+            stats.calendar_month,
+            String(stats.today).slice(0, 10),
+          ).map((cell) => {
+            if (cell.kind === "pad") {
+              return <div key={cell.k} className="min-h-[2.5rem]" />;
+            }
+            const cat = readMap.get(cell.iso);
+            const read = readMap.has(cell.iso);
+            const showIcon = read && cat;
+            return (
+              <div
+                key={cell.iso}
+                title={tooltipForCell(
+                  cell.iso,
+                  read,
+                  cat,
+                  String(stats.today).slice(0, 10),
+                )}
+                className={
+                  "flex min-h-[2.5rem] flex-col items-center justify-center rounded-lg border text-xs transition " +
+                  (read
+                    ? "border-emerald-200/80 bg-emerald-100"
+                    : cell.isToday
+                    ? "border-dashed border-brand-300 bg-slate-50"
+                    : "border-slate-200 bg-slate-50/80")
+                }
+              >
+                <span
+                  className={
+                    "text-[10px] font-medium " + (read ? "text-emerald-700" : "text-slate-500")
+                  }
+                >
+                  {cell.d}
+                </span>
+                {read ? (
+                  <span
+                    className={
+                      "text-base leading-none " +
+                      (showIcon ? "" : "font-semibold text-emerald-700")
+                    }
+                    aria-hidden
+                  >
+                    {showIcon ? iconForCategory(cat) : "✓"}
+                  </span>
+                ) : (
+                  <span className="h-3" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded border border-slate-200 bg-slate-50" />
+            Missed
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded border border-emerald-200/80 bg-emerald-100" />
+            Read
+          </span>
         </div>
       </div>
     </section>
   );
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function utcCurrentMonth() {
+  const t = new Date();
+  return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1 };
+}
+
+function formatMonthLabel(y, m) {
+  return new Intl.DateTimeFormat("en", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(y, m - 1, 1)));
+}
+
+function shiftMonth(v, delta) {
+  const t = new Date(Date.UTC(v.y, v.m - 1 + delta, 1));
+  return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1 };
+}
+
+/** True if (year, month) is after the current calendar month in UTC. */
+function isNextMonthBeyondCurrent(nv, todayVal) {
+  const [y, m] = String(todayVal).slice(0, 10).split("-").map(Number);
+  if (nv.y > y) return true;
+  if (nv.y < y) return false;
+  return nv.m > m;
+}
+
+function daysInMonthUtc(y, m) {
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+function toIsoYMD(y, m, d) {
+  return [y, String(m).padStart(2, "0"), String(d).padStart(2, "0")].join("-");
+}
+
+function buildMonthGridCells(y, m, todayIso) {
+  const dim = daysInMonthUtc(y, m);
+  const firstDow = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+  const cells = [];
+  let k = 0;
+  for (let i = 0; i < firstDow; i++) {
+    cells.push({ kind: "pad", k: k++ });
+  }
+  for (let d = 1; d <= dim; d++) {
+    const iso = toIsoYMD(y, m, d);
+    cells.push({ kind: "day", d, iso, isToday: iso === todayIso });
+  }
+  const tail = (7 - (cells.length % 7)) % 7;
+  for (let i = 0; i < tail; i++) {
+    cells.push({ kind: "pad", k: k++ });
+  }
+  return cells;
+}
+
+function iconForCategory(cat) {
+  if (!cat) return "📰";
+  const k = String(cat).toLowerCase();
+  return CATEGORY_ICONS[k] || "📰";
+}
+
+function tooltipForCell(iso, read, cat, todayIso) {
+  if (read) {
+    const c = cat ? ` · ${cat}` : "";
+    return `${iso} — read${c}`;
+  }
+  if (iso < todayIso) {
+    return `${iso} — Missed`;
+  }
+  if (iso === todayIso) {
+    return `${iso} — Open Home to count today`;
+  }
+  return `${iso} — not yet`;
 }
 
 function Stat({ label, value, suffix, accent = false }) {
@@ -192,8 +363,7 @@ function buildHeatmapCells(stats) {
 }
 
 function parseIso(iso) {
-  // Construct a UTC date so day-arithmetic doesn't drift across DST.
-  const [y, m, d] = iso.split("-").map(Number);
+  const [y, m, d] = String(iso).split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d));
 }
 

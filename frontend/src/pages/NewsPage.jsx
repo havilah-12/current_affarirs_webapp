@@ -76,10 +76,11 @@ export default function NewsPage() {
   const scrollerRef = useRef(null);
 
   // Daily-streak: record this visit (idempotent within a UTC day on the
-  // backend). Fire and forget - failures are non-fatal to the news view.
+  // backend). Re-run when the category filter changes so the calendar can
+  // show which topic you read that day. Fire and forget.
   useEffect(() => {
-    pingActivity().catch(() => {});
-  }, []);
+    pingActivity({ category: filters.category || null }).catch(() => {});
+  }, [filters.category]);
 
   // Update the URL when FiltersBar fires a change. `replace: true` keeps
   // each filter tweak from polluting the browser history stack.

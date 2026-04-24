@@ -78,6 +78,12 @@ _ADDITIVE_COLUMNS = {
             "ALTER TABLE saved_articles ADD COLUMN full_content_fetched_at DATETIME",
         ),
     ],
+    "reading_activity": [
+        (
+            "category",
+            "ALTER TABLE reading_activity ADD COLUMN category VARCHAR(64)",
+        ),
+    ],
 }
 
 

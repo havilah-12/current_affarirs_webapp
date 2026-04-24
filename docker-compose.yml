@@ -69,6 +69,8 @@ services:
       args:
         # Same-origin call. Nginx forwards /api/* to the backend service.
         VITE_API_BASE_URL: /api
+        # Bump this string after UI changes if the old JS bundle still loads in the browser.
+        CACHEBUST: "saved-delete-modal-2026-04-30"
     image: current-affairs-frontend:test
     container_name: current-affairs-frontend
     restart: unless-stopped

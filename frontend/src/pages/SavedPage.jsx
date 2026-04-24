@@ -8,6 +8,7 @@ import {
   listSaved,
   updateSaved,
 } from "../api/saved.js";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import SavedArticleCard from "../components/SavedArticleCard.jsx";
 import Spinner, { FullPageSpinner } from "../components/Spinner.jsx";
 import StreakPanel from "../components/StreakPanel.jsx";
@@ -38,6 +39,10 @@ export default function SavedPage() {
   const [bulkBusy, setBulkBusy] = useState(false);
 
   const { toast, showToast } = useToast();
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const closeDeleteDialog = useCallback(() => setDeleteTarget(null), []);
 
   const load = useCallback(async (starred) => {
     setLoading(true);
@@ -78,8 +83,7 @@ export default function SavedPage() {
     }
   }
 
-  async function handleDelete(article) {
-    if (!window.confirm(`Remove "${article.title}" from saved?`)) return;
+  async function runConfirmedDelete(article) {
     setRowBusy(article.id, "delete", true);
     try {
       await deleteSaved(article.id);
@@ -89,6 +93,17 @@ export default function SavedPage() {
       showToast(apiErrorMessage(err, "Failed to delete."), "error");
       setRowBusy(article.id, "delete", false);
     }
+  }
+
+  function handleRequestDelete(article) {
+    setDeleteTarget(article);
+  }
+
+  function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    const article = deleteTarget;
+    closeDeleteDialog();
+    void runConfirmedDelete(article);
   }
 
   async function handleDownload(article, { format }) {
@@ -194,12 +209,22 @@ export default function SavedPage() {
               key={article.id}
               article={article}
               onToggleStar={() => handleToggleStar(article)}
-              onDelete={() => handleDelete(article)}
+              onDelete={() => handleRequestDelete(article)}
               onDownload={(opts) => handleDownload(article, opts)}
               busy={busy[article.id]}
             />
           ))}
         </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          message="Are you sure to delete this article from saved?"
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onCancel={closeDeleteDialog}
+          onConfirm={handleConfirmDelete}
+        />
       )}
 
       <Toast toast={toast} />

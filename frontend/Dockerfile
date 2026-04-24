@@ -29,7 +29,9 @@ COPY . .
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
-RUN npm run build
+# Bust Docker layer cache when the SPA bundle is stale (pass via compose `CACHEBUST`).
+ARG CACHEBUST=0
+RUN echo "Vite build CACHEBUST=${CACHEBUST}" && npm run build
 
 
 FROM nginx:1.27-alpine AS runtime

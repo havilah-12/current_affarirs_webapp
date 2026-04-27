@@ -2,33 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import { getActivityStats } from "../api/activity.js";
 
-/** Emoji per NewsData.io category (matches FiltersBar / backend). */
-const CATEGORY_ICONS = {
-  business: "💼",
-  crime: "⚖️",
-  domestic: "🏠",
-  education: "🎓",
-  entertainment: "🎬",
-  environment: "🌱",
-  food: "🍽",
-  health: "🏥",
-  lifestyle: "✨",
-  other: "📋",
-  politics: "🏛",
-  science: "🔬",
-  sports: "⚽",
-  technology: "💻",
-  top: "⭐",
-  tourism: "✈",
-  world: "🌍",
-};
-
 /**
  * Daily-reading-streak widget shown at the top of the Dashboard.
  *
  * Four headline metrics, 30-day consistency, and a month calendar (UTC) with
- * category icons on days the user read from Home. Visiting Home once a UTC
- * day (with a category filter) records that day and tag.
+ * a simple read marker on days the user opened Home.
  */
 export default function StreakPanel() {
   const [view, setView] = useState(utcCurrentMonth);
@@ -184,7 +162,6 @@ export default function StreakPanel() {
             }
             const cat = readMap.get(cell.iso);
             const read = readMap.has(cell.iso);
-            const showIcon = read && cat;
             return (
               <div
                 key={cell.iso}
@@ -212,13 +189,10 @@ export default function StreakPanel() {
                 </span>
                 {read ? (
                   <span
-                    className={
-                      "text-base leading-none " +
-                      (showIcon ? "" : "font-semibold text-emerald-700")
-                    }
+                    className="text-base leading-none font-semibold text-emerald-700"
                     aria-hidden
                   >
-                    {showIcon ? iconForCategory(cat) : "✓"}
+                    ✓
                   </span>
                 ) : (
                   <span className="h-3" />
@@ -295,12 +269,6 @@ function buildMonthGridCells(y, m, todayIso) {
     cells.push({ kind: "pad", k: k++ });
   }
   return cells;
-}
-
-function iconForCategory(cat) {
-  if (!cat) return "📰";
-  const k = String(cat).toLowerCase();
-  return CATEGORY_ICONS[k] || "📰";
 }
 
 function tooltipForCell(iso, read, cat, todayIso) {

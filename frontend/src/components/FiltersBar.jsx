@@ -11,7 +11,7 @@ export default function FiltersBar({ filters, onChange, onSubmitSearch }) {
   );
 
   function update(patch) {
-    onChange({ ...filters, ...patch });
+    onChange({ ...filters, q: localQ.trim(), ...patch });
   }
 
   function handleSubmit(event) {

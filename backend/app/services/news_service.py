@@ -309,16 +309,17 @@ def _build_params(
         # the result set is at least geographically scoped.
         params["country"] = settings.DEFAULT_COUNTRY
 
-    if q:
-        q_clean = q.strip()
-        if q_clean:
-            # NewsData.io's `q` searches title + description + content.
-            params["q"] = q_clean
+    q_clean = q.strip() if q else ""
+    qit_clean = q_in_title.strip() if q_in_title else ""
 
-    if q_in_title:
-        qit_clean = q_in_title.strip()
-        if qit_clean:
-            params["qInTitle"] = qit_clean
+    if q_clean and qit_clean:
+        # NewsData.io forbids sending both `q` and `qInTitle` simultaneously.
+        # Combine them into a single free-text search.
+        params["q"] = f"{q_clean} {qit_clean}"
+    elif q_clean:
+        params["q"] = q_clean
+    elif qit_clean:
+        params["qInTitle"] = qit_clean
 
     return params
 

@@ -320,6 +320,12 @@ def _build_params(
         if qit_clean:
             params["qInTitle"] = qit_clean
 
+    if "q" in params and "qInTitle" in params:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot use both the Search box and the Region filter at the same time. Please clear one to continue."
+        )
+
     return params
 
 

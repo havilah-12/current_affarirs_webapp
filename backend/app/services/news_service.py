@@ -309,22 +309,17 @@ def _build_params(
         # the result set is at least geographically scoped.
         params["country"] = settings.DEFAULT_COUNTRY
 
-    if q:
-        q_clean = q.strip()
-        if q_clean:
-            # NewsData.io's `q` searches title + description + content.
-            params["q"] = q_clean
+    q_clean = q.strip() if q else ""
+    qit_clean = q_in_title.strip() if q_in_title else ""
 
-    if q_in_title:
-        qit_clean = q_in_title.strip()
-        if qit_clean:
-            params["qInTitle"] = qit_clean
-
-    if "q" in params and "qInTitle" in params:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You cannot use both the Search box and the Region filter at the same time. Please clear one to continue."
-        )
+    if q_clean and qit_clean:
+        # NewsData.io forbids sending both `q` and `qInTitle` simultaneously.
+        # Combine them using AND so the search strictly requires both terms.
+        params["q"] = f"{q_clean} AND {qit_clean}"
+    elif q_clean:
+        params["q"] = q_clean
+    elif qit_clean:
+        params["qInTitle"] = qit_clean
 
     return params
 

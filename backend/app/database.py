@@ -16,6 +16,7 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from .config import settings
 
+# When app starts → check database → create/update tables if needed
 
 def _build_engine(database_url: str) -> Engine:
     """Create the SQLAlchemy engine with SQLite-friendly defaults.
@@ -47,7 +48,7 @@ SessionLocal = sessionmaker(
 
 
 class Base(DeclarativeBase):
-    """Declarative base class for all ORM models."""
+    """Declarative base class for all ORM models. all tables inherit from this """
 
 
 def init_db() -> None:

@@ -16,7 +16,13 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from .config import settings
 
-# When app starts → check database → create/update tables if needed
+
+"""
+When app starts → check database → create/update tables if needed
+Step 1 → import all models (tables)
+Step 2 → create tables if they don't exist
+Step 3 → check if any new columns need to be added
+"""
 
 def _build_engine(database_url: str) -> Engine:
     """Create the SQLAlchemy engine with SQLite-friendly defaults.
